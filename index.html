@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>12-bit Asynchronous Up/Down Counter | VLSI Design Project</title>
+<meta name="description" content="A 12-bit up/down counter with asynchronous reset and parallel load, taken from Verilog RTL through Cadence Xcelium, Genus and Innovus to a DRC-clean physical layout.">
+<meta name="theme-color" content="#EDF0F4">
+<meta property="og:type" content="website">
+<meta property="og:title" content="12-bit Asynchronous Up/Down Counter with Parallel Load">
+<meta property="og:description" content="RTL, verification, synthesis and physical design of a 12-bit counter in Cadence Xcelium, Genus and Innovus.">
+<meta property="og:image" content="assets/og-cover.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230F1B2D'/%3E%3Crect x='6' y='6' width='9' height='9' fill='%236C8CFF'/%3E%3Crect x='17' y='6' width='9' height='9' fill='%23F2B84B'/%3E%3Crect x='6' y='17' width='9' height='9' fill='%23F2B84B'/%3E%3Crect x='17' y='17' width='9' height='9' fill='%236C8CFF'/%3E%3C/svg%3E">
+
+<!--
+=====================================================================
+ HOW TO CUSTOMISE (everything is in this one file)
+ 1. Put your images in an /assets folder next to index.html.
+    Every image slot already points to a filename. Drop a file with
+    that exact name in /assets and it replaces the placeholder.
+    Slots that cannot load stay as placeholders, so nothing breaks.
+ 2. Edit the CONFIG object near the bottom of this file
+    (GitHub, LinkedIn, report PDF, email, video).
+ 3. Deploy: push index.html + /assets to GitHub, import the repo in
+    Vercel, framework preset "Other". No build step needed.
+
+ IMAGE FILENAMES (assets/)
+   og-cover.png            social preview, 1200x630
+   block-diagram.png       functional block diagram
+   flowchart.png           design flowchart
+   sim-console.png         Xcelium console log (19 tests passed)
+   wave-complete.png       wave-reset-load.png    wave-updown-hold.png
+   wave-rollover.png       wave-priority.png      gate-level-verification.png
+   schematic-1.png ... schematic-4.png     Genus schematics
+   power-slow.png          power-fast.png         Genus power reports
+   layout-floorplan.png    layout-rings.png       layout-stripes.png
+   drc-before.png          layout-stripes-fixed.png   drc-clean.png
+   layout-special-route.png    layout-placement.png
+   timing-prects-setup.png     timing-prects-hold.png    optimization.png
+   drc-post-route.png      drc-post-route-fixed.png
+   cts-report.png          clock-tree.png         drc-post-cts.png
+   timing-post-route.png   connectivity.png       power-final.png
+   area-final.png          layout-final.png
+   team-1.jpg  team-2.jpg  team-3.jpg
+=====================================================================
+-->
+
+<script>
+/* Apply saved or system theme before first paint to avoid a flash. */
+(function(){
+  var t=null;
+  try{t=localStorage.getItem('theme');}catch(e){}
+  if(!t){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
+  document.documentElement.setAttribute('data-theme',t);
+})();
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ---------- Tokens ---------- */
+:root{
+  --bg:#EDF0F4;
+  --bg-2:#E1E7EE;
+  --surface:#FFFFFF;
+  --ink:#0F1B2D;
+  --ink-2:#465770;
+  --rule:#CBD3DE;
+  --sync:#2250E0;
+  --sync-bg:#E4EBFD;
+  --async:#9A5B00;
+  --async-bg:#FBEED2;
+  --ok:#16794F;
+  --ok-bg:#DAF1E5;
+  --code-bg:#0F1B2D;
+  --code-ink:#DCE5F3;
+  --shadow:0 1px 2px rgba(15,27,45,.06),0 12px 32px -12px rgba(15,27,45,.18);
+  --display:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+}
+[data-theme="dark"]{
+  --bg:#0A111D;
+  --bg-2:#0F1828;
+  --surface:#111B2D;
+  --ink:#E8EDF5;
+  --ink-2:#9AA9BF;
+  --rule:#233149;
+  --sync:#7F9BFF;
+  --sync-bg:#17254A;
+  --async:#F2B84B;
+  --async-bg:#3A2A0B;
+  --ok:#4CC38A;
+  --ok-bg:#0F2E22;
+  --code-bg:#070C15;
+  --code-ink:#DCE5F3;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 16px 36px -14px rgba(0,0,0,.6);
+}
+
+/* ---------- Base ---------- */
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:88px;-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--display);font-size:1.0625rem;line-height:1.6;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+img{max-width:100%;display:block}
+a{color:inherit}
+p{margin:0 0 1rem;max-width:64ch}
+h1,h2,h3,h4{margin:0;font-weight:600;letter-spacing:-.02em;line-height:1.1}
+h1{font-size:clamp(2.7rem,6.2vw,5.2rem);letter-spacing:-.035em;line-height:1}
+h2{font-size:clamp(2rem,3.8vw,3rem)}
+h3{font-size:1.3rem;letter-spacing:-.01em;line-height:1.25}
+code,kbd,.mono{font-family:var(--mono)}
+.wrap{width:min(1200px,100% - 2.5rem);margin-inline:auto}
+.muted{color:var(--ink-2)}
+.skip{position:absolute;left:-999px;top:8px;background:var(--ink);color:var(--bg);padding:.6rem 1rem;border-radius:6px;z-index:100}
+.skip:focus{left:8px}
+:focus-visible{outline:3px solid var(--sync);outline-offset:3px;border-radius:4px}
+
+/* ---------- Header ---------- */
+.site-head{
+  position:sticky;top:0;z-index:50;
+  background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);
+  border-bottom:1px solid var(--rule);
+}
+.head-in{display:flex;align-items:center;justify-content:space-between;gap:1.5rem;height:68px}
+.brand{display:flex;align-items:center;gap:.7rem;text-decoration:none;font-weight:600;letter-spacing:-.01em}
+.brand svg{width:28px;height:28px;flex:none}
+.nav{display:flex;align-items:center;gap:1.6rem}
+.nav a{text-decoration:none;font-size:.95rem;color:var(--ink-2);padding:.3rem 0;border-bottom:2px solid transparent;transition:color .15s,border-color .15s}
+.nav a:hover,.nav a.on{color:var(--ink);border-color:var(--sync)}
+.head-tools{display:flex;align-items:center;gap:.5rem}
+.icon-btn{
+  width:40px;height:40px;display:grid;place-items:center;border-radius:10px;
+  border:1px solid var(--rule);background:var(--surface);color:var(--ink);cursor:pointer;
+}
+.icon-btn:hover{border-color:var(--ink-2)}
+.icon-btn svg{width:18px;height:18px}
+.menu-btn{display:none}
+.moon{display:none}
+[data-theme="dark"] .sun{display:none}
+[data-theme="dark"] .moon{display:block}
+
+@media (max-width:1020px){
+  .menu-btn{display:grid}
+  .nav{
+    position:absolute;left:0;right:0;top:68px;background:var(--bg);
+    flex-direction:column;align-items:flex-start;gap:0;padding:.5rem 1.25rem 1.25rem;
+    border-bottom:1px solid var(--rule);display:none;
+  }
+  .nav.open{display:flex}
+  .nav a{width:100%;padding:.85rem 0;font-size:1.05rem;border-bottom:1px solid var(--rule)}
+}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;gap:.55rem;padding:.8rem 1.25rem;border-radius:10px;
+  font:inherit;font-weight:600;font-size:.98rem;text-decoration:none;cursor:pointer;
+  border:1px solid var(--ink);background:var(--ink);color:var(--bg);
+  transition:transform .15s,background .15s,color .15s,border-color .15s;
+}
+.btn:hover{transform:translateY(-1px)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--rule)}
+.btn.ghost:hover{border-color:var(--ink)}
+.btn svg{width:16px;height:16px}
+
+/* ---------- Sections ---------- */
+.sec{padding:clamp(4rem,9vw,7.5rem) 0}
+.sec.alt{background:var(--surface);border-block:1px solid var(--rule)}
+.sec-head{
+  display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:1.5rem 4rem;
+  align-items:end;margin-bottom:clamp(2rem,5vw,3.5rem);
+}
+.sec-head p{margin:0;color:var(--ink-2);font-size:1.12rem}
+@media (max-width:900px){.sec-head{grid-template-columns:1fr}}
+
+/* ---------- Hero ---------- */
+.hero{padding:clamp(2.5rem,6vw,5rem) 0 clamp(3.5rem,8vw,6rem)}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.98fr);gap:clamp(2rem,5vw,4.5rem);align-items:center}
+.hero h1{max-width:12ch}
+.hero .lead{font-size:clamp(1.1rem,1.6vw,1.3rem);color:var(--ink-2);margin:1.6rem 0 2rem;max-width:46ch}
+.hero-cta{display:flex;flex-wrap:wrap;gap:.75rem}
+.facts{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.1rem 2rem;
+  margin:2.75rem 0 0;padding-top:1.5rem;border-top:1px solid var(--rule);
+}
+.facts dt{font-size:.85rem;color:var(--ink-2)}
+.facts dd{margin:.1rem 0 0;font-weight:500}
+@media (max-width:980px){.hero-grid{grid-template-columns:1fr}.hero h1{max-width:16ch}}
+
+/* ---------- Simulator ---------- */
+.sim{
+  background:var(--surface);border:1px solid var(--rule);border-radius:16px;
+  box-shadow:var(--shadow);padding:clamp(1.1rem,2.4vw,1.75rem);
+}
+.sim-top{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;margin-bottom:.4rem}
+.sim-top h2{font-size:1rem;letter-spacing:0;font-weight:600}
+.sim-top span{font-size:.82rem;color:var(--ink-2)}
+.readout{display:flex;align-items:baseline;gap:.25rem;font-family:var(--mono);font-weight:500;line-height:1}
+.readout .pre{font-size:clamp(1.6rem,4vw,2.4rem);color:var(--ink-2)}
+.readout .dg{font-size:clamp(3.6rem,10vw,6.4rem);letter-spacing:-.05em;display:inline-block}
+.readout .dg.bump{animation:bump .22s ease-out}
+@keyframes bump{from{transform:translateY(-10%);opacity:.35}to{transform:none;opacity:1}}
+.dec{font-size:.92rem;color:var(--ink-2);margin:.5rem 0 1.1rem}
+.dec b{color:var(--ink);font-family:var(--mono);font-weight:500}
+
+.bits{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;margin-bottom:1.1rem}
+.bit{border:1px solid var(--rule);border-radius:6px;text-align:center;padding:.3rem 0 .35rem;background:var(--bg);transition:background .15s,border-color .15s}
+.bit .ix{display:block;font-size:.66rem;color:var(--ink-2);font-family:var(--mono)}
+.bit .v{display:block;font-family:var(--mono);font-size:1.25rem;font-weight:500;line-height:1.3}
+.bit .tg{display:block;font-family:var(--mono);font-size:.6rem;color:var(--ink-2);min-height:.9rem}
+.bit.one{background:var(--sync-bg);border-color:var(--sync)}
+.bit.one .v{color:var(--sync)}
+.bit.forced{border-color:var(--async)}
+.bit.forced .tg{color:var(--async);font-weight:500}
+@media (max-width:560px){
+  .bits{grid-template-columns:repeat(6,minmax(0,1fr))}
+}
+
+.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
+.sw{position:relative;
+  display:flex;align-items:center;gap:.7rem;padding:.6rem .8rem;border:1px solid var(--rule);
+  border-radius:10px;cursor:pointer;background:var(--bg);user-select:none;
+}
+.sw input{position:absolute;opacity:0;pointer-events:none}
+.sw .track{width:38px;height:22px;border-radius:99px;background:var(--rule);position:relative;flex:none;transition:background .15s}
+.sw .track::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.sw input:checked + .track{background:var(--sync)}
+.sw.async input:checked + .track{background:var(--async)}
+.sw input:checked + .track::after{transform:translateX(16px)}
+.sw input:focus-visible + .track{outline:3px solid var(--sync);outline-offset:2px}
+.sw .t{font-weight:600;font-size:.95rem;line-height:1.2}
+.sw .t small{display:block;font-weight:400;font-size:.76rem;color:var(--ink-2)}
+.seg{display:flex;border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:var(--bg)}
+.seg label{flex:1;text-align:center;cursor:pointer;padding:.62rem .4rem;font-weight:600;font-size:.95rem;position:relative}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){background:var(--sync);color:#fff}
+[data-theme="dark"] .seg label:has(input:checked){color:#0A111D}
+.seg label:has(input:focus-visible){outline:3px solid var(--sync);outline-offset:-3px}
+.field{
+  display:flex;align-items:center;gap:.5rem;padding:.35rem .5rem .35rem .8rem;border:1px solid var(--rule);
+  border-radius:10px;background:var(--bg);
+}
+.field label{font-weight:600;font-size:.95rem;white-space:nowrap}
+.field label small{font-weight:400;color:var(--ink-2);font-size:.76rem}
+.field input{
+  width:100%;min-width:0;font-family:var(--mono);font-size:1.05rem;font-weight:500;
+  border:0;background:transparent;color:var(--ink);padding:.35rem .2rem;text-transform:uppercase;
+}
+.field input:focus{outline:none}
+.field:focus-within{border-color:var(--sync);box-shadow:0 0 0 3px color-mix(in srgb,var(--sync) 25%,transparent)}
+.presets{display:flex;gap:.3rem}
+.presets button{
+  font-family:var(--mono);font-size:.78rem;border:1px solid var(--rule);background:var(--surface);color:var(--ink);
+  border-radius:6px;padding:.25rem .45rem;cursor:pointer
+}
+.presets button:hover{border-color:var(--ink-2)}
+.clockrow{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-top:.7rem}
+.clockrow .btn{justify-content:center;width:100%}
+.btn.sync{background:var(--sync);border-color:var(--sync);color:#fff}
+[data-theme="dark"] .btn.sync{color:#0A111D}
+.btn[aria-pressed="true"]{background:var(--ok);border-color:var(--ok);color:#fff}
+[data-theme="dark"] .btn[aria-pressed="true"]{color:#07130d}
+.status{
+  margin-top:1rem;padding:.8rem 1rem;border-radius:10px;font-size:.95rem;line-height:1.45;
+  background:var(--bg);border-left:4px solid var(--sync);min-height:3.4rem;display:flex;align-items:center
+}
+.status.async{border-color:var(--async);background:var(--async-bg)}
+.sim-note{font-size:.8rem;color:var(--ink-2);margin:.8rem 0 0;max-width:none}
+@media (max-width:420px){.controls{grid-template-columns:1fr}}
+
+/* ---------- Figures / placeholders ---------- */
+.shot{margin:0}
+.shot .frame{
+  position:relative;aspect-ratio:var(--ar,16/9);background:var(--bg-2);border:1px solid var(--rule);
+  border-radius:8px;overflow:hidden;display:grid;place-items:center;
+}
+.shot .ph{
+  position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:1rem;
+  background-image:
+    linear-gradient(var(--rule) 1px,transparent 1px),
+    linear-gradient(90deg,var(--rule) 1px,transparent 1px);
+  background-size:26px 26px;background-position:-1px -1px;color:var(--ink-2);
+}
+.shot .ph span{display:block;background:var(--bg-2);padding:.55rem .9rem;border-radius:8px;border:1px dashed var(--ink-2);max-width:92%}
+.shot .ph b{display:block;font-weight:600;font-size:.88rem;color:var(--ink)}
+.shot .ph code{font-size:.78rem;word-break:break-all}
+.shot .frame img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff}
+.shot .frame.loaded{cursor:zoom-in;background:#fff}
+.shot figcaption{font-size:.88rem;color:var(--ink-2);margin-top:.6rem;line-height:1.45}
+dialog#lb{border:0;padding:0;background:transparent;max-width:96vw;max-height:94vh}
+dialog#lb::backdrop{background:rgba(5,10,18,.82)}
+dialog#lb img{max-width:96vw;max-height:88vh;background:#fff;border-radius:8px;margin:0 auto}
+dialog#lb button{display:block;margin:.8rem auto 0}
+
+/* ---------- Overview ---------- */
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(2rem,5vw,4.5rem);align-items:start}
+@media (max-width:900px){.two{grid-template-columns:1fr}}
+.reqs{list-style:none;margin:0;padding:0;border-top:1px solid var(--rule)}
+.reqs li{display:grid;grid-template-columns:22px 1fr;gap:.8rem;padding:.8rem 0;border-bottom:1px solid var(--rule);font-size:1rem;line-height:1.45}
+.reqs svg{width:18px;height:18px;margin-top:.15rem;color:var(--ok)}
+.tablewrap{overflow-x:auto;border:1px solid var(--rule);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{text-align:left;padding:.75rem 1rem;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-weight:600;color:var(--ink-2);font-size:.85rem;background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td.m,th.m{font-family:var(--mono);text-align:center;white-space:nowrap}
+.alt .tablewrap{background:var(--bg)}
+.alt th{background:var(--bg-2)}
+.pill{display:inline-block;padding:.12rem .55rem;border-radius:99px;font-size:.78rem;font-weight:600}
+.pill.a{background:var(--async-bg);color:var(--async)}
+.pill.s{background:var(--sync-bg);color:var(--sync)}
+.pill.g{background:var(--ok-bg);color:var(--ok)}
+
+/* ---------- Architecture ---------- */
+.diagram{border:1px solid var(--rule);border-radius:12px;background:var(--surface);padding:1rem;overflow-x:auto}
+.diagram svg{display:block;min-width:760px;width:100%;height:auto}
+.diagram text{font-family:var(--display);fill:var(--ink)}
+.diagram .mono-t{font-family:var(--mono)}
+.legend{display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:1rem;font-size:.92rem;color:var(--ink-2)}
+.legend i{display:inline-block;width:22px;height:4px;border-radius:2px;vertical-align:middle;margin-right:.5rem}
+.eq{
+  background:var(--code-bg);color:var(--code-ink);border-radius:12px;padding:1.25rem 1.4rem;
+  font-family:var(--mono);font-size:.9rem;line-height:1.9;overflow-x:auto;margin:0
+}
+.eq .a{color:#F2B84B}.eq .s{color:#8FA8FF}.eq .c{color:#7C8CA6}
+.arch-notes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2rem;margin-top:3rem}
+.arch-notes>div{border-top:2px solid var(--ink);padding-top:1rem}
+.arch-notes h3{margin-bottom:.5rem}
+.arch-notes p{color:var(--ink-2);font-size:1rem}
+@media (max-width:900px){.arch-notes{grid-template-columns:1fr;gap:1.5rem}}
+
+/* ---------- Flow ---------- */
+.steps{list-style:none;margin:0;padding:0;counter-reset:step}
+.steps li{
+  display:grid;grid-template-columns:56px 1fr;gap:0 1.25rem;position:relative;padding-bottom:2rem;
+}
+.steps li::before{
+  counter-increment:step;content:counter(step);
+  width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
+  background:var(--surface);border:2px solid var(--ink);font-family:var(--mono);font-weight:500;z-index:1
+}
+.steps li::after{content:"";position:absolute;left:21px;top:44px;bottom:0;width:2px;background:var(--rule)}
+.steps li:last-child{padding-bottom:0}
+.steps li:last-child::after{display:none}
+.steps h3{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;margin:.55rem 0 .3rem}
+.steps p{margin:0;color:var(--ink-2);font-size:1rem}
+.tools{display:grid;grid-template-columns:1fr;gap:0;border-top:1px solid var(--rule);margin-top:2rem}
+.tools div{display:grid;grid-template-columns:130px 1fr;gap:1rem;padding:.85rem 0;border-bottom:1px solid var(--rule)}
+.tools b{font-weight:600}
+.tools span{color:var(--ink-2)}
+.sticky{position:sticky;top:104px}
+@media (max-width:900px){.sticky{position:static}}
+
+/* ---------- Tabs ---------- */
+.tabs{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1.5rem}
+.tab{
+  font:inherit;font-weight:600;font-size:.95rem;padding:.6rem 1rem;border-radius:99px;cursor:pointer;
+  border:1px solid var(--rule);background:var(--bg);color:var(--ink-2)
+}
+.tab:hover{color:var(--ink);border-color:var(--ink-2)}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.panel[hidden]{display:none}
+.panel-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:clamp(1.5rem,4vw,3rem);align-items:start}
+.panel-grid h3{margin-bottom:.6rem}
+.panel-grid p{color:var(--ink-2)}
+@media (max-width:900px){.panel-grid{grid-template-columns:1fr}}
+
+/* ---------- Test table ---------- */
+.filters{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1rem}
+.chip{font:inherit;font-size:.88rem;font-weight:600;padding:.4rem .85rem;border-radius:99px;border:1px solid var(--rule);background:var(--surface);color:var(--ink-2);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--sync);border-color:var(--sync);color:#fff}
+[data-theme="dark"] .chip[aria-pressed="true"]{color:#0A111D}
+.tscroll{max-height:460px;overflow:auto;border:1px solid var(--rule);border-radius:10px}
+.tscroll table th{position:sticky;top:0;z-index:1}
+.tscroll table{background:var(--surface)}
+.verify-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:clamp(2rem,5vw,4rem);align-items:start}
+@media (max-width:980px){.verify-top{grid-template-columns:1fr}}
+.big-pass{font-size:clamp(3.4rem,8vw,5.5rem);font-weight:600;letter-spacing:-.04em;line-height:1;margin-bottom:.8rem}
+.big-pass small{font-size:.32em;font-weight:500;color:var(--ink-2);letter-spacing:0;margin-left:.4rem}
+
+/* ---------- Synthesis ---------- */
+.bars{display:grid;gap:2.2rem}
+.bars h3{font-size:1.05rem;margin-bottom:.9rem}
+.bar-row{display:grid;grid-template-columns:88px 1fr;gap:.8rem;align-items:center;margin-bottom:.55rem;font-size:.95rem}
+.bar-row .tr{height:34px;background:var(--bg-2);border-radius:6px;overflow:hidden}
+.bar-row .fl{height:100%;display:flex;align-items:center;justify-content:flex-end;padding-right:.6rem;color:#fff;font-family:var(--mono);font-size:.85rem;border-radius:6px;white-space:nowrap}
+[data-theme="dark"] .bar-row .fl{color:#07101c}
+.fl.slow{background:var(--sync)}
+.fl.fast{background:var(--async)}
+[data-theme="dark"] .fl.fast{color:#1b1100}
+.bar-note{font-size:.92rem;color:var(--ink-2);margin:.7rem 0 0}
+.schem-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.5rem;margin-top:3rem}
+.schem-grid .wide{grid-column:1/-1}
+@media (max-width:760px){.schem-grid{grid-template-columns:1fr}}
+.callout{
+  display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap;
+  margin-top:3rem;padding:1.4rem 1.6rem;border:1px solid var(--rule);border-radius:12px;background:var(--bg)
+}
+.callout p{margin:0;max-width:52ch}
+.callout b{display:block;font-size:1.1rem;margin-bottom:.15rem}
+
+/* ---------- Layout stages ---------- */
+.stage{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,7fr);gap:clamp(1.5rem,4vw,4rem);padding:clamp(2rem,4vw,3.25rem) 0;border-top:1px solid var(--rule)}
+.stage:first-of-type{border-top:0;padding-top:0}
+.stage .txt{position:relative;padding-left:2rem}
+.stage .txt::before{content:"";position:absolute;left:0;top:.5rem;width:12px;height:12px;border-radius:50%;background:var(--sync);box-shadow:0 0 0 5px var(--sync-bg)}
+.stage.warn .txt::before{background:var(--async);box-shadow:0 0 0 5px var(--async-bg)}
+.stage h3{margin-bottom:.6rem}
+.stage .txt p{color:var(--ink-2);font-size:1rem}
+.stage .sticky{top:110px}
+.shots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.25rem}
+.shots .wide{grid-column:1/-1}
+@media (max-width:900px){.stage{grid-template-columns:1fr}.stage .sticky{position:static}}
+@media (max-width:560px){.shots{grid-template-columns:1fr}}
+
+/* ---------- Results ledger ---------- */
+.ledger{border-bottom:1px solid var(--rule)}
+.ledger-row{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:1rem 4rem;padding:2.4rem 0;border-top:1px solid var(--rule);align-items:start}
+.ledger-row h3{font-size:1rem;color:var(--ink-2);font-weight:500;letter-spacing:0;margin-bottom:.5rem}
+.ledger-row .val{font-size:clamp(2.6rem,6.4vw,4.8rem);font-weight:600;letter-spacing:-.04em;line-height:1}
+.ledger-row .val small{font-size:.34em;font-weight:500;letter-spacing:0;color:var(--ink-2);margin-left:.4rem}
+.ledger-row p{margin:0 0 .8rem;color:var(--ink-2)}
+.ledger-row ul{margin:0;padding-left:1.1rem;color:var(--ink-2)}
+.ledger-row li{margin-bottom:.3rem}
+@media (max-width:900px){.ledger-row{grid-template-columns:1fr}}
+.stack{display:flex;height:40px;border-radius:8px;overflow:hidden;margin:1rem 0 .6rem;background:var(--bg-2)}
+.stack i{display:block;height:100%}
+.stack-key{display:flex;flex-wrap:wrap;gap:.4rem 1.4rem;font-size:.88rem;color:var(--ink-2);margin-bottom:1.6rem}
+.stack-key span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:.45rem;background:var(--c)}
+.results-shots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.25rem;margin-top:3rem}
+.results-shots .wide{grid-column:span 2}
+@media (max-width:900px){.results-shots{grid-template-columns:1fr}.results-shots .wide{grid-column:auto}}
+
+/* ---------- Code ---------- */
+.code-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
+.code-head .tabs{margin:0}
+.codebox{position:relative;background:var(--code-bg);border-radius:12px;border:1px solid var(--rule)}
+.codebox pre{margin:0;padding:1.4rem 1.5rem;max-height:560px;overflow:auto;color:var(--code-ink);font-family:var(--mono);font-size:.84rem;line-height:1.7;tab-size:2}
+.codebox .copy{
+  position:absolute;top:.7rem;right:.9rem;font:inherit;font-size:.8rem;font-weight:600;color:var(--code-ink);
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:.35rem .7rem;cursor:pointer
+}
+.codebox .copy:hover{background:rgba(255,255,255,.16)}
+.t-c{color:#7C8CA6;font-style:italic}.t-s{color:#9ADCB0}.t-d{color:#F2B84B}.t-n{color:#F5A97F}.t-k{color:#8FA8FF}.t-f{color:#E6A6F2}
+
+/* ---------- Team ---------- */
+.team{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(1.25rem,3vw,2.5rem)}
+.person h3{margin:1rem 0 .15rem}
+.person p{margin:0;color:var(--ink-2);font-family:var(--mono);font-size:.92rem}
+@media (max-width:760px){.team{grid-template-columns:1fr;max-width:340px}}
+.course{margin-top:3.5rem;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.5rem;padding-top:1.75rem;border-top:1px solid var(--rule)}
+.course dt{font-size:.85rem;color:var(--ink-2)}
+.course dd{margin:.15rem 0 0;font-weight:500}
+@media (max-width:900px){.course{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* ---------- Footer ---------- */
+.foot{padding:clamp(3rem,7vw,5rem) 0 2rem;background:var(--ink);color:var(--bg)}
+[data-theme="dark"] .foot{background:#060B14;color:var(--ink)}
+.foot-top{display:flex;justify-content:space-between;gap:2rem;flex-wrap:wrap;align-items:flex-end;padding-bottom:2.5rem;border-bottom:1px solid rgba(255,255,255,.16)}
+.foot h2{font-size:clamp(1.8rem,3.6vw,2.6rem);max-width:16ch}
+.foot .links{display:flex;flex-wrap:wrap;gap:.7rem}
+.foot .btn{background:var(--bg);color:var(--ink);border-color:var(--bg)}
+[data-theme="dark"] .foot .btn{background:var(--ink);color:#0A111D;border-color:var(--ink)}
+.foot .btn.ghost{background:transparent;color:inherit;border-color:rgba(255,255,255,.3)}
+[data-theme="dark"] .foot .btn.ghost{color:var(--ink)}
+.foot small{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;padding-top:1.5rem;opacity:.7;font-size:.88rem}
+
+/* ---------- Motion preferences ---------- */
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-head">
+  <div class="wrap head-in">
+    <a class="brand" href="#top" aria-label="Project home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--ink)"/><rect x="6" y="6" width="9" height="9" fill="var(--sync)"/><rect x="17" y="6" width="9" height="9" fill="var(--async)"/><rect x="6" y="17" width="9" height="9" fill="var(--async)"/><rect x="17" y="17" width="9" height="9" fill="var(--sync)"/></svg>
+      12-bit Up/Down Counter
+    </a>
+    <nav class="nav" id="nav" aria-label="Primary">
+      <a href="#overview">Overview</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#flow">Flow</a>
+      <a href="#verification">Verification</a>
+      <a href="#synthesis">Synthesis</a>
+      <a href="#layout">Layout</a>
+      <a href="#results">Results</a>
+      <a href="#code">Code</a>
+      <a href="#team">Team</a>
+    </nav>
+    <div class="head-tools">
+      <button class="icon-btn" id="theme" type="button" aria-label="Toggle light and dark theme">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <button class="icon-btn menu-btn" id="menu" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ================= HERO ================= -->
+<section class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div>
+      <h1>A 12-bit counter, from Verilog to silicon layout.</h1>
+      <p class="lead">Asynchronous reset and parallel load on top of a clocked up/down data path. Verified in Xcelium, synthesized in Genus, placed and routed in Innovus.</p>
+      <div class="hero-cta">
+        <a class="btn" href="#overview">Read the case study</a>
+        <a class="btn ghost" href="#" data-link="github">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.7 5.4-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>
+          Source on GitHub
+        </a>
+        <a class="btn ghost" href="#" data-link="report">Project report (PDF)</a>
+      </div>
+      <dl class="facts">
+        <div><dt>Course</dt><dd>EEE411L, VLSI Design Lab</dd></div>
+        <div><dt>Institution</dt><dd>BRAC University</dd></div>
+        <div><dt>Tool suite</dt><dd>Cadence Xcelium, Genus, Innovus</dd></div>
+        <div><dt>Term</dt><dd>Summer 2026</dd></div>
+      </dl>
+    </div>
+
+    <!-- Live behavioral model of the RTL -->
+    <div class="sim" id="sim" role="group" aria-label="Interactive counter simulator">
+      <div class="sim-top"><h2>Try the counter</h2><span>Behavioral model of the RTL</span></div>
+      <div class="readout" aria-live="polite" aria-atomic="true" aria-label="Count in hexadecimal">
+        <span class="pre">0x</span><span class="dg" id="d2">0</span><span class="dg" id="d1">0</span><span class="dg" id="d0">0</span>
+      </div>
+      <div class="dec"><b id="dec">0</b> of 4095</div>
+      <div class="bits" id="bits" aria-hidden="true"></div>
+
+      <div class="controls">
+        <label class="sw async"><input type="checkbox" id="in-reset"><span class="track"></span><span class="t">Reset<small>asynchronous</small></span></label>
+        <label class="sw async"><input type="checkbox" id="in-load"><span class="track"></span><span class="t">Load<small>asynchronous</small></span></label>
+        <label class="sw"><input type="checkbox" id="in-en"><span class="track"></span><span class="t">Enable<small>at clock edge</small></span></label>
+        <div class="seg" role="radiogroup" aria-label="Count direction">
+          <label><input type="radio" name="dir" id="in-up" checked>Up</label>
+          <label><input type="radio" name="dir" id="in-down">Down</label>
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label for="in-a">A[11:0] <small>load value, hex</small></label>
+          <input id="in-a" inputmode="text" maxlength="3" value="A55" autocomplete="off" spellcheck="false" aria-describedby="a-hint">
+          <span class="presets" id="a-hint">
+            <button type="button" data-a="A55">A55</button>
+            <button type="button" data-a="FFF">FFF</button>
+            <button type="button" data-a="000">000</button>
+          </span>
+        </div>
+      </div>
+      <div class="clockrow">
+        <button class="btn sync" id="btn-tick" type="button">Clock edge</button>
+        <button class="btn ghost" id="btn-auto" type="button" aria-pressed="false">Auto clock</button>
+      </div>
+      <div class="status" id="status" role="status"></div>
+      <p class="sim-note">Priority is Reset, then Load, then Enable. Each bit shows whether its flip-flop is being forced by SET or CLR, or follows D.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= OVERVIEW ================= -->
+<section class="sec alt" id="overview">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>A counter that has to react before the clock does</h2>
+      <p>A counter is a clocked circuit, but the specification asks reset and parallel load to take effect immediately. The design resolves that by splitting the 12-bit load into twelve one-bit asynchronous set/clear decisions, while normal counting stays on the clocked data path.</p>
+    </div>
+
+    <div class="two">
+      <div>
+        <h3 style="margin-bottom:1.1rem">What the design does</h3>
+        <ul class="reqs">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Counts across the full 12-bit range, 0x000 to 0xFFF (0 to 4095).</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Active-high asynchronous Reset forces Count to 0 immediately.</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Active-high asynchronous Load forces Count to A[11:0] immediately.</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Counts up or down on the rising clock edge when Enable is 1, and holds when Enable is 0.</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Keeps the priority Reset over Load over count/hold.</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Rolls over from 0xFFF to 0x000 and underflows from 0x000 to 0xFFF.</li>
+        </ul>
+      </div>
+      <div>
+        <h3 style="margin-bottom:1.1rem">Operating modes</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th class="m">Reset</th><th class="m">Load</th><th class="m">Enable</th><th class="m">Up_Down</th><th>Operation</th></tr></thead>
+            <tbody>
+              <tr><td class="m">1</td><td class="m">X</td><td class="m">X</td><td class="m">X</td><td><span class="pill a">Async</span> Clear, Count = 0</td></tr>
+              <tr><td class="m">0</td><td class="m">1</td><td class="m">X</td><td class="m">X</td><td><span class="pill a">Async</span> Parallel load, Count = A</td></tr>
+              <tr><td class="m">0</td><td class="m">0</td><td class="m">0</td><td class="m">X</td><td><span class="pill s">Clocked</span> Hold current Count</td></tr>
+              <tr><td class="m">0</td><td class="m">0</td><td class="m">1</td><td class="m">1</td><td><span class="pill s">Clocked</span> Count up by 1</td></tr>
+              <tr><td class="m">0</td><td class="m">0</td><td class="m">1</td><td class="m">0</td><td><span class="pill s">Clocked</span> Count down by 1</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="muted" style="margin-top:1rem;font-size:.95rem">With modulo-4096 arithmetic, incrementing 0xFFF gives 0x000 and decrementing 0x000 gives 0xFFF.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ARCHITECTURE ================= -->
+<section class="sec" id="architecture">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Two layers: next-state logic and twelve bit-slices</h2>
+      <p>A standard flip-flop has asynchronous set and clear pins, not a pin that loads an arbitrary bus. So for every bit, the load value A[i] is converted into its own set and clear signal. This maps cleanly onto standard-cell hardware.</p>
+    </div>
+
+    <div class="diagram">
+      <svg viewBox="0 0 920 410" role="img" aria-label="Block diagram. Enable, Up_Down and the fed-back Count drive next-state logic whose output feeds the D pins of twelve flip-flop bit-slices. Reset, Load and A feed a set and clear decoder that drives the asynchronous SET and CLR pins.">
+        <defs>
+          <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--sync)"/></marker>
+          <marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--async)"/></marker>
+        </defs>
+
+        <!-- sync inputs -->
+        <text x="12" y="79" font-size="15" font-weight="600">Enable</text>
+        <text x="12" y="129" font-size="15" font-weight="600">Up_Down</text>
+        <path d="M84 75H190" stroke="var(--sync)" stroke-width="2.5" marker-end="url(#ab)" fill="none"/>
+        <path d="M96 125H190" stroke="var(--sync)" stroke-width="2.5" marker-end="url(#ab)" fill="none"/>
+
+        <!-- next-state -->
+        <rect x="190" y="40" width="230" height="130" rx="10" fill="var(--sync-bg)" stroke="var(--sync)" stroke-width="2"/>
+        <text x="305" y="82" text-anchor="middle" font-size="17" font-weight="600">Next-state logic</text>
+        <text x="305" y="108" text-anchor="middle" font-size="13" class="mono-t">Enable ? Count ± 1 : Count</text>
+        <text x="305" y="132" text-anchor="middle" font-size="13" fill="var(--ink-2)" style="fill:var(--ink-2)">clocked data path</text>
+
+        <!-- async inputs -->
+        <text x="12" y="259" font-size="15" font-weight="600">Reset</text>
+        <text x="12" y="299" font-size="15" font-weight="600">Load</text>
+        <text x="12" y="339" font-size="15" font-weight="600">A[11:0]</text>
+        <path d="M64 255H190" stroke="var(--async)" stroke-width="2.5" marker-end="url(#aa)" fill="none"/>
+        <path d="M56 295H190" stroke="var(--async)" stroke-width="2.5" marker-end="url(#aa)" fill="none"/>
+        <path d="M80 335H190" stroke="var(--async)" stroke-width="2.5" marker-end="url(#aa)" fill="none"/>
+
+        <!-- decode -->
+        <rect x="190" y="225" width="230" height="140" rx="10" fill="var(--async-bg)" stroke="var(--async)" stroke-width="2"/>
+        <text x="305" y="262" text-anchor="middle" font-size="17" font-weight="600">Set / clear decode</text>
+        <text x="305" y="294" text-anchor="middle" font-size="12.5" class="mono-t">clr = Reset | (Load &amp; ~A)</text>
+        <text x="305" y="318" text-anchor="middle" font-size="12.5" class="mono-t">set = Load &amp; A &amp; ~clr</text>
+        <text x="305" y="347" text-anchor="middle" font-size="13" style="fill:var(--ink-2)">one pair per bit</text>
+
+        <!-- flip-flops -->
+        <rect x="560" y="120" width="190" height="170" rx="10" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/>
+        <rect x="566" y="126" width="190" height="170" rx="10" fill="none" stroke="var(--rule)" stroke-width="2"/>
+        <text x="655" y="178" text-anchor="middle" font-size="17" font-weight="600">12 × D flip-flop</text>
+        <text x="655" y="202" text-anchor="middle" font-size="13" style="fill:var(--ink-2)">bit-slices, SDFFSRX1</text>
+        <text x="570" y="165" font-size="12" class="mono-t" font-weight="500">D</text>
+        <text x="570" y="212" font-size="12" class="mono-t" font-weight="500" style="fill:var(--async)">SET</text>
+        <text x="570" y="242" font-size="12" class="mono-t" font-weight="500" style="fill:var(--async)">CLR</text>
+        <text x="716" y="214" font-size="12" class="mono-t" font-weight="500">Q</text>
+        <path d="M640 120l8 10 8-10" fill="none" stroke="var(--sync)" stroke-width="2"/>
+
+        <!-- wires -->
+        <path d="M420 100H500V160H560" fill="none" stroke="var(--sync)" stroke-width="2.5" marker-end="url(#ab)"/>
+        <text x="432" y="92" font-size="12.5" class="mono-t">next_count[11:0]</text>
+        <path d="M420 262H500V208H560" fill="none" stroke="var(--async)" stroke-width="2.5" marker-end="url(#aa)"/>
+        <path d="M420 322H525V238H560" fill="none" stroke="var(--async)" stroke-width="2.5" marker-end="url(#aa)"/>
+        <text x="432" y="254" font-size="12.5" class="mono-t" style="fill:var(--async)">async_set</text>
+        <text x="432" y="342" font-size="12.5" class="mono-t" style="fill:var(--async)">async_clear</text>
+
+        <!-- clock -->
+        <path d="M652 60V118" stroke="var(--sync)" stroke-width="2.5" marker-end="url(#ab)" fill="none"/>
+        <text x="628" y="52" font-size="15" font-weight="600">Clk</text>
+
+        <!-- output + feedback -->
+        <path d="M750 200H880" stroke="var(--ink)" stroke-width="2.5" fill="none" marker-end="url(#ab)"/>
+        <text x="768" y="190" font-size="13" class="mono-t">Count[11:0]</text>
+        <path d="M810 200V18H305V40" fill="none" stroke="var(--sync)" stroke-width="2.5" stroke-dasharray="6 5" marker-end="url(#ab)"/>
+        <text x="560" y="11" font-size="12.5" style="fill:var(--ink-2)">Count fed back</text>
+        <circle cx="810" cy="200" r="4.5" fill="var(--sync)"/>
+      </svg>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--sync)"></i>Clocked path</span>
+      <span><i style="background:var(--async)"></i>Asynchronous path</span>
+    </div>
+
+    <div class="two" style="margin-top:3.5rem">
+      <div>
+        <h3 style="margin-bottom:1rem">Per-bit control equations</h3>
+<pre class="eq"><span class="c">// normal clocked operation</span>
+next_count = Enable ? (Up_Down ? Count + 1 : Count - 1) : Count
+
+<span class="c">// asynchronous controls, bit i</span>
+<span class="a">clr[i]</span> = Reset | (Load &amp; ~A[i])
+<span class="a">set[i]</span> = (Load &amp; A[i]) &amp; ~clr[i]</pre>
+        <p class="muted" style="margin-top:1rem;font-size:.97rem">Reset sits inside every clear signal, which guarantees it overrides an active Load.</p>
+      </div>
+      <div class="shots-col">
+        <figure class="shot" data-img="assets/block-diagram.png" data-ratio="1.8" data-name="Functional block diagram">
+          <figcaption>Functional block diagram: Clk, Reset, Load, Enable, Up_Down and A[11:0] in, Count[11:0] out.</figcaption>
+        </figure>
+      </div>
+    </div>
+
+    <div class="arch-notes">
+      <div><h3>Next-state layer</h3><p>Computes next_count from the current Count, Enable and Up_Down. This is the only logic the clock edge touches.</p></div>
+      <div><h3>Bit-slice layer</h3><p>Twelve identical D flip-flops receive next_count[i] on D and set_i / clr_i on the asynchronous pins.</p></div>
+      <div><h3>Normal operation</h3><p>With Reset and Load low, all asynchronous inputs are inactive and the flip-flops update only on the rising edge of Clk.</p></div>
+    </div>
+
+    <div style="margin-top:3rem;max-width:560px">
+      <figure class="shot" data-img="assets/flowchart.png" data-ratio="0.85" data-name="Design flowchart">
+        <figcaption>Control flowchart showing the priority of Reset, Load, Enable and direction.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FLOW ================= -->
+<section class="sec alt" id="flow">
+  <div class="wrap two">
+    <div class="sticky">
+      <h2>From specification to layout in nine steps</h2>
+      <p class="muted" style="margin-top:1.2rem">The project follows the standard digital flow: define behavior, write RTL, prove it in simulation, map it to a cell library, then place and route.</p>
+      <div class="tools">
+        <div><b>Xcelium</b><span>RTL and gate-level simulation, SimVision waveforms</span></div>
+        <div><b>Genus</b><span>RTL synthesis to standard cells</span></div>
+        <div><b>Innovus</b><span>Floorplan, placement, clock tree, routing</span></div>
+      </div>
+    </div>
+    <ol class="steps">
+      <li><div><h3>Specification analysis <span class="pill s">Spec</span></h3><p>Identify the data width, control inputs, priority order, count direction, hold operation and boundary behavior.</p></div></li>
+      <li><div><h3>Logic formulation <span class="pill s">Spec</span></h3><p>Write the next-state equation and derive the per-bit asynchronous set and clear equations for parallel loading.</p></div></li>
+      <li><div><h3>RTL coding <span class="pill s">Verilog</span></h3><p>Implement <code>counter_12bit_updown</code> and the reusable <code>dff_async_set_clear</code> submodule.</p></div></li>
+      <li><div><h3>Testbench development <span class="pill s">Verilog</span></h3><p>Generate a 10 ns clock and write directed tests for reset, load, up, down, hold, priority, rollover and underflow.</p></div></li>
+      <li><div><h3>Simulation <span class="pill s">Xcelium</span></h3><p>Compile design and testbench, run, add the important signals to the waveform viewer and check behavior against the spec.</p></div></li>
+      <li><div><h3>Debugging and refinement <span class="pill s">Xcelium</span></h3><p>Correct priority and testbench issues, and confirm that short asynchronous load pulses persist in the state.</p></div></li>
+      <li><div><h3>RTL synthesis <span class="pill a">Genus</span></h3><p>Synthesize with the selected standard-cell library and constraints, in both slow and fast process corners.</p></div></li>
+      <li><div><h3>Report analysis <span class="pill a">Genus</span></h3><p>Capture schematics plus timing, power and area reports, and compare them with the intended architecture.</p></div></li>
+      <li><div><h3>Physical implementation <span class="pill g">Innovus</span></h3><p>Import the netlist, then floorplan, place, build the clock tree, route and verify connectivity.</p></div></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ================= VERIFICATION ================= -->
+<section class="sec" id="verification">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Verified against 19 directed tests</h2>
+      <p>A self-checking testbench compares Count with an expected value after every scenario and prints pass or fail. It covers the asynchronous controls, counting in both directions, hold, the Reset over Load priority, and both ends of the range.</p>
+    </div>
+
+    <div class="verify-top">
+      <div>
+        <div class="big-pass">19 / 19<small>tests passed</small></div>
+        <p class="muted">Every test has a name, an expected Count and a pass flag, all visible as signals in SimVision. Filter the list to see how each behavior is covered.</p>
+        <figure class="shot" data-img="assets/sim-console.png" data-ratio="1.3" data-name="Xcelium console output" style="margin-top:1.5rem">
+          <figcaption>Xcelium console log with the final test summary.</figcaption>
+        </figure>
+      </div>
+      <div>
+        <div class="filters" id="filters" role="group" aria-label="Filter tests by category"></div>
+        <div class="tscroll" tabindex="0" aria-label="Test list">
+          <table>
+            <thead><tr><th class="m">#</th><th>Test</th><th>Category</th><th class="m">Expected</th></tr></thead>
+            <tbody id="tests"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin:4rem 0 1.2rem;font-size:1.6rem">Waveforms</h3>
+    <div class="tabs" role="tablist" aria-label="Waveform views" data-tabs="wave">
+      <button class="tab" role="tab" id="wt1" aria-controls="wp1" aria-selected="true">Complete run</button>
+      <button class="tab" role="tab" id="wt2" aria-controls="wp2" aria-selected="false" tabindex="-1">Reset and load pulse</button>
+      <button class="tab" role="tab" id="wt3" aria-controls="wp3" aria-selected="false" tabindex="-1">Up, down and hold</button>
+      <button class="tab" role="tab" id="wt4" aria-controls="wp4" aria-selected="false" tabindex="-1">Rollover and underflow</button>
+      <button class="tab" role="tab" id="wt5" aria-controls="wp5" aria-selected="false" tabindex="-1">Reset vs Load</button>
+    </div>
+
+    <div class="panel" role="tabpanel" id="wp1" aria-labelledby="wt1">
+      <div class="panel-grid">
+        <figure class="shot" data-img="assets/wave-complete.png" data-ratio="4" data-name="Complete waveform"></figure>
+        <div><h3>All 19 tests on one timeline</h3><p>The full simulation in SimVision, from the first asynchronous reset to the final re-enable test. Test_ID, Test_Name and Expected_Count are plotted next to Count so each segment can be matched to its scenario.</p></div>
+      </div>
+    </div>
+    <div class="panel" role="tabpanel" id="wp2" aria-labelledby="wt2" hidden>
+      <div class="panel-grid">
+        <figure class="shot" data-img="assets/wave-reset-load.png" data-ratio="3.4" data-name="Reset and narrow load pulse"></figure>
+        <div><h3>Reset and a narrow Load pulse</h3><p>Reset clears Count at once, without a clock edge. A short Load pulse that rises and falls between clock edges still leaves 0xA55 in the counter, because the flip-flops are set and cleared asynchronously.</p></div>
+      </div>
+    </div>
+    <div class="panel" role="tabpanel" id="wp3" aria-labelledby="wt3" hidden>
+      <div class="panel-grid">
+        <figure class="shot" data-img="assets/wave-updown-hold.png" data-ratio="3.3" data-name="Up-count, down-count and hold"></figure>
+        <div><h3>Up, down and hold</h3><p>Count moves by one on each rising clock edge while Enable is high, in the direction set by Up_Down. With Enable low, Count holds, even while Up_Down toggles between edges.</p></div>
+      </div>
+    </div>
+    <div class="panel" role="tabpanel" id="wp4" aria-labelledby="wt4" hidden>
+      <div class="panel-grid">
+        <figure class="shot" data-img="assets/wave-rollover.png" data-ratio="3.6" data-name="Rollover and underflow"></figure>
+        <div><h3>Both ends of the range</h3><p>Counting down from 0x000 wraps to 0xFFF, and counting up from 0xFFF wraps to 0x000. This confirms the modulo-4096 behavior.</p></div>
+      </div>
+    </div>
+    <div class="panel" role="tabpanel" id="wp5" aria-labelledby="wt5" hidden>
+      <div class="panel-grid">
+        <figure class="shot" data-img="assets/wave-priority.png" data-ratio="3.2" data-name="Reset versus Load priority"></figure>
+        <div><h3>Reset wins over Load</h3><p>With both asserted, Count goes to 0x000. When Reset is released while Load is still high, Count takes the value on A (0xABC in the test).</p></div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <div>
+        <b>Gate-level check</b>
+        <p>The same testbench can be compiled with a <code>GATE_SIM</code> flag to run against the synthesized netlist and write a separate waveform file.</p>
+      </div>
+      <a class="btn ghost" href="#" data-link="video" target="_blank" rel="noopener">Watch the netlist walkthrough</a>
+    </div>
+    <div style="margin-top:2rem;max-width:760px">
+      <figure class="shot" data-img="assets/gate-level-verification.png" data-ratio="1.1" data-name="Gate-level verification">
+        <figcaption>Gate-level verification result.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SYNTHESIS ================= -->
+<section class="sec alt" id="synthesis">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Synthesis across two process corners</h2>
+      <p>Genus mapped the RTL to standard cells in the slow and fast process corners. The corners trade a little area for a large difference in power.</p>
+    </div>
+
+    <div class="two">
+      <div class="bars">
+        <div>
+          <h3>Area</h3>
+          <div class="bar-row"><span>Slow</span><div class="tr"><div class="fl slow" style="width:100%">229.482</div></div></div>
+          <div class="bar-row"><span>Fast</span><div class="tr"><div class="fl fast" style="width:99.1%">227.430</div></div></div>
+          <p class="bar-note">The fast corner is about 0.9% smaller.</p>
+        </div>
+        <div>
+          <h3>Power</h3>
+          <div class="bar-row"><span>Slow</span><div class="tr"><div class="fl slow" style="width:58.2%">3935.009 nW</div></div></div>
+          <div class="bar-row"><span>Fast</span><div class="tr"><div class="fl fast" style="width:100%">6765.520 nW</div></div></div>
+          <p class="bar-note">The fast corner draws about 72% more power than the slow corner.</p>
+        </div>
+      </div>
+      <div>
+        <h3 style="margin-bottom:.8rem">What the mapping shows</h3>
+        <p class="muted">The 12-bit parallel load maps onto the library's SDFFSRX1 flip-flop, which has the asynchronous set and clear pins the architecture needs. The counting logic and the per-bit set/clear decode sit around those twelve flip-flops.</p>
+        <p class="muted">Bars share a zero baseline within each chart, so the small area difference is shown at its true size.</p>
+      </div>
+    </div>
+
+    <div class="schem-grid">
+      <figure class="shot wide" data-img="assets/schematic-1.png" data-ratio="2.9" data-name="Synthesized schematic, full view">
+        <figcaption>Synthesized schematic: the next-state chain runs along the bottom with twelve bit-slices above it.</figcaption>
+      </figure>
+      <figure class="shot" data-img="assets/schematic-2.png" data-ratio="1.67" data-name="Synthesized schematic, detail"></figure>
+      <figure class="shot" data-img="assets/schematic-3.png" data-ratio="2.2" data-name="Synthesized schematic, detail"></figure>
+      <figure class="shot wide" data-img="assets/schematic-4.png" data-ratio="1.8" data-name="Synthesized schematic, detail"></figure>
+      <figure class="shot" data-img="assets/power-slow.png" data-ratio="3.3" data-name="Genus power report, slow process">
+        <figcaption>Genus power report, slow process.</figcaption>
+      </figure>
+      <figure class="shot" data-img="assets/power-fast.png" data-ratio="3.1" data-name="Genus power report, fast process">
+        <figcaption>Genus power report, fast process.</figcaption>
+      </figure>
+    </div>
+
+    <div class="callout">
+      <div>
+        <b>Gate-level netlist, full view</b>
+        <p>A recorded walkthrough of the complete synthesized netlist schematic.</p>
+      </div>
+      <a class="btn" href="#" data-link="video" target="_blank" rel="noopener">Watch on YouTube</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= LAYOUT ================= -->
+<section class="sec" id="layout">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Physical design in Innovus, including the bugs</h2>
+      <p>The netlist was floorplanned, powered, placed, clock-tree synthesized and routed. Two rounds of design-rule violations were debugged along the way, and the final layout is clean.</p>
+    </div>
+    <div id="stages"></div>
+  </div>
+</section>
+
+<!-- ================= RESULTS ================= -->
+<section class="sec alt" id="results">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Power, performance and area after routing</h2>
+      <p>The routed design is DRC-clean, has no open or short nets, and meets timing with a wide margin.</p>
+    </div>
+
+    <div class="ledger">
+      <div class="ledger-row">
+        <div><h3>Power</h3><div class="val">0.005083<small>mW</small></div></div>
+        <div>
+          <p>Total power from the final Innovus report on a 0.9 V rail. Internal power dominates because the design is mostly flip-flops.</p>
+          <div class="stack" role="img" aria-label="Power split: internal 85.11 percent, switching 14.82 percent, leakage 0.07 percent">
+            <i style="width:85.11%;background:var(--sync)"></i><i style="width:14.82%;background:var(--async)"></i><i style="width:.07%;background:var(--ok)"></i>
+          </div>
+          <div class="stack-key">
+            <span style="--c:var(--sync)">Internal 85.11%</span>
+            <span style="--c:var(--async)">Switching 14.82%</span>
+            <span style="--c:var(--ok)">Leakage 0.07%</span>
+          </div>
+          <div class="stack" role="img" aria-label="Power by group: sequential 78.45 percent, combinational 21.55 percent">
+            <i style="width:78.45%;background:var(--ink)"></i><i style="width:21.55%;background:var(--ink-2);opacity:.55"></i>
+          </div>
+          <div class="stack-key" style="margin-bottom:0">
+            <span style="--c:var(--ink)">Sequential 78.45%</span>
+            <span style="--c:var(--ink-2)">Combinational 21.55%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ledger-row">
+        <div><h3>Performance</h3><div class="val">7.153<small>ns setup slack</small></div></div>
+        <div>
+          <p>Worst negative slack across all paths after routing, with no violating paths.</p>
+          <ul>
+            <li>Register-to-register worst slack: 8.076 ns</li>
+            <li>Total negative slack: 0.000 ns</li>
+            <li>Violating paths: 0 of 70</li>
+            <li>No max capacitance, transition, fanout or length violations</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="ledger-row">
+        <div><h3>Area</h3><div class="val">222.984<small>64 instances</small></div></div>
+        <div>
+          <p>Layout footprint from <code>report_area</code> on the top module, with 12 state flip-flops and the counting and set/clear logic around them.</p>
+          <ul>
+            <li>Placement density: 67.917%</li>
+            <li>Clock tree built for the 12 flip-flops</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="ledger-row">
+        <div><h3>Sign-off</h3><div class="val">DRC clean</div></div>
+        <div>
+          <p>The connectivity report shows no open or short nets. The first DRC run found 220 violations, caused by power stripes on the same metal layer. After the layer assignment was corrected, the check passed.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="results-shots">
+      <figure class="shot wide" data-img="assets/layout-final.png" data-ratio="1.3" data-name="Final routed layout">
+        <figcaption>Final routed layout.</figcaption>
+      </figure>
+      <figure class="shot" data-img="assets/power-final.png" data-ratio="1.15" data-name="Final power report">
+        <figcaption>Final power report.</figcaption>
+      </figure>
+    </div>
+
+    <div class="two" style="margin-top:4rem">
+      <div>
+        <h3 style="margin-bottom:.8rem">Discussion</h3>
+        <p class="muted">The central obstacle was mapping a multi-bit parallel load onto a standard library. Splitting the input bus into independent set and clear signals for SDFFSRX1 flip-flops solved it, and Xcelium confirmed the result across all 19 directed tests, including the strict priority of Reset over Load and the modulo boundaries.</p>
+        <p class="muted">In synthesis, the slow corner gave a slightly larger area (229.482) at lower power (3935.009 nW). The fast corner shrank area to 227.430 but raised power to 6765.520 nW.</p>
+      </div>
+      <div>
+        <h3 style="margin-bottom:.8rem">Conclusion</h3>
+        <p class="muted">The project covers the full digital flow from behavioral RTL to physical layout. Mapping parallel load to per-bit set/clear pins delivered immediate state overrides while keeping counting synchronous. Genus and Innovus produced a DRC-clean layout with positive timing slack and a balanced power, performance and area result.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CODE ================= -->
+<section class="sec" id="code">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>The Verilog behind it</h2>
+      <p>The RTL is two small modules. The testbench uses reusable tasks to start each test and check Count against an expected value. The testbench below is condensed from the full file in the repository.</p>
+    </div>
+    <div class="code-head">
+      <div class="tabs" role="tablist" aria-label="Source files" data-tabs="code">
+        <button class="tab" role="tab" id="ct1" aria-controls="cp1" aria-selected="true">counter_12bit_updown.v</button>
+        <button class="tab" role="tab" id="ct2" aria-controls="cp2" aria-selected="false" tabindex="-1">tb_counter_12bit_updown.v</button>
+      </div>
+    </div>
+    <div class="panel" role="tabpanel" id="cp1" aria-labelledby="ct1">
+      <div class="codebox"><button class="copy" type="button" data-copy="src-rtl">Copy</button><pre><code id="code-rtl"></code></pre></div>
+    </div>
+    <div class="panel" role="tabpanel" id="cp2" aria-labelledby="ct2" hidden>
+      <div class="codebox"><button class="copy" type="button" data-copy="src-tb">Copy</button><pre><code id="code-tb"></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TEAM ================= -->
+<section class="sec alt" id="team">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Built by three students at BRAC University</h2>
+      <p>Section 02 of the VLSI Design Lab, BSRM School of Engineering, Department of Electrical and Electronic Engineering.</p>
+    </div>
+    <div class="team">
+      <div class="person">
+        <figure class="shot" data-img="assets/team-1.jpg" data-ratio="0.8" data-name="Team member photo"></figure>
+        <h3>MD Shazzad Ahammed Shuvo</h3><p>ID 23321013</p>
+      </div>
+      <div class="person">
+        <figure class="shot" data-img="assets/team-2.jpg" data-ratio="0.8" data-name="Team member photo"></figure>
+        <h3>Tirtha Nag</h3><p>ID 23121060</p>
+      </div>
+      <div class="person">
+        <figure class="shot" data-img="assets/team-3.jpg" data-ratio="0.8" data-name="Team member photo"></figure>
+        <h3>MD Imamul Hossain Mahi</h3><p>ID 22221154</p>
+      </div>
+    </div>
+    <dl class="course">
+      <div><dt>Course</dt><dd>EEE411L, VLSI Design Lab</dd></div>
+      <div><dt>Section</dt><dd>02</dd></div>
+      <div><dt>Term</dt><dd>Summer 2026</dd></div>
+      <div><dt>Submitted</dt><dd>September 05, 2026</dd></div>
+    </dl>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-top">
+      <h2>See the source or read the full report.</h2>
+      <div class="links">
+        <a class="btn" href="#" data-link="github">GitHub repository</a>
+        <a class="btn ghost" href="#" data-link="report">Project report (PDF)</a>
+        <a class="btn ghost" href="#" data-link="linkedin">LinkedIn</a>
+        <a class="btn ghost" href="#" data-link="email">Email</a>
+      </div>
+    </div>
+    <small><span>12-bit Asynchronous Up/Down Counter with Parallel Load</span><a href="#top" style="color:inherit">Back to top</a></small>
+  </div>
+</footer>
+
+<dialog id="lb" aria-label="Image preview">
+  <img alt="">
+  <button class="btn" type="button" id="lb-close">Close</button>
+</dialog>
+
+<!-- Source text (kept out of the DOM until highlighted) -->
+<script type="text/plain" id="src-rtl">`timescale 1ns/1ps
+
+// 12-bit Up/Down Counter
+// Priority: Reset > Load > Enable/Up_Down > Hold
+module counter_12bit_updown (
+  input  wire        Clk,
+  input  wire        Reset,
+  input  wire        Load,
+  input  wire        Enable,
+  input  wire        Up_Down,
+  input  wire [11:0] A,
+  output wire [11:0] Count
+);
+
+  wire [11:0] next_count;
+  wire [11:0] async_set;
+  wire [11:0] async_clear;
+
+  // Normal clocked counting operation
+  assign next_count = Enable
+      ? (Up_Down ? (Count + 12'h001)
+                 : (Count - 12'h001))
+      : Count;
+
+  // Convert parallel-load data into individual asynchronous
+  // preset and clear signals. Reset has the highest priority.
+  assign async_clear = {12{Reset}} | ({12{Load}} & ~A);
+  assign async_set   = ({12{Load}} & A) & ~async_clear;
+
+  genvar bit_index;
+  generate
+    for (bit_index = 0; bit_index < 12; bit_index = bit_index + 1) begin : bit_ff
+      dff_async_set_clear state_ff (
+        .clk (Clk),
+        .set (async_set[bit_index]),
+        .clr (async_clear[bit_index]),
+        .d   (next_count[bit_index]),
+        .q   (Count[bit_index])
+      );
+    end
+  endgenerate
+
+endmodule
+
+// D flip-flop with asynchronous SET and CLEAR.
+// CLEAR has priority over SET.
+module dff_async_set_clear (
+  input  wire clk,
+  input  wire set,
+  input  wire clr,
+  input  wire d,
+  output reg  q
+);
+
+  always @(posedge clk or posedge set or posedge clr) begin
+    if (clr)
+      q <= 1'b0;
+    else if (set)
+      q <= 1'b1;
+    else
+      q <= d;
+  end
+
+endmodule
+</script>
+
+<script type="text/plain" id="src-tb">`timescale 1ns/1ps
+
+module tb_counter_12bit_updown;
+
+  reg Clk, Reset, Load, Enable, Up_Down;
+  reg  [11:0] A;
+  wire [11:0] Count;
+
+  // These signals help identify the tests in SimVision.
+  integer Test_ID;
+  reg [8*64-1:0] Test_Name;
+  reg Test_Start;
+  reg [11:0] Expected_Count;
+  reg Test_Pass;
+  integer Passed_Tests, Failed_Tests;
+
+  counter_12bit_updown dut (
+    .Clk(Clk), .Reset(Reset), .Load(Load),
+    .Enable(Enable), .Up_Down(Up_Down),
+    .A(A), .Count(Count)
+  );
+
+  // Clock period = 10 ns
+  always #5 Clk = ~Clk;
+
+  task start_test;
+    input integer id;
+    input [8*64-1:0] name;
+    begin
+      Test_ID = id;
+      Test_Name = name;
+      Test_Start = 1'b1;
+      Test_Start <= #1 1'b0;
+      $display("\n[TEST %0d] %0s", Test_ID, Test_Name);
+    end
+  endtask
+
+  task check_count;
+    input [11:0] expected;
+    begin
+      Expected_Count = expected;
+      #1;  // let nonblocking assignments settle
+      if (Count === expected) begin
+        Test_Pass = 1'b1;
+        Passed_Tests = Passed_Tests + 1;
+        $display("  PASS at %0t ns: Count = 0x%03h", $time, Count);
+      end else begin
+        Test_Pass = 1'b0;
+        Failed_Tests = Failed_Tests + 1;
+        $display("  FAIL at %0t ns: expected 0x%03h, got 0x%03h",
+                 $time, expected, Count);
+      end
+      #1;
+    end
+  endtask
+
+  initial begin
+`ifdef GATE_SIM
+    $dumpfile("outputs/xcelium/counter_12bit_updown_gate.vcd");
+`else
+    $dumpfile("outputs/xcelium/counter_12bit_updown_rtl.vcd");
+`endif
+    $dumpvars(0, tb_counter_12bit_updown);
+
+    Clk = 0; Reset = 0; Load = 0; Enable = 0; Up_Down = 1; A = 12'h000;
+    Test_ID = 0; Test_Name = "INITIALIZATION"; Test_Start = 0;
+    Expected_Count = 12'hxxx; Test_Pass = 0;
+    Passed_Tests = 0; Failed_Tests = 0;
+
+    // TEST 1: Asynchronous Reset
+    #2;
+    start_test(1, "Asynchronous Reset assertion");
+    Reset = 1; check_count(12'h000); Reset = 0;
+
+    // TEST 2: Narrow asynchronous Load pulse
+    @(negedge Clk);
+    start_test(2, "Narrow asynchronous Load pulse");
+    A = 12'hA55; #1;
+    Load = 1; #3; Load = 0;
+    check_count(12'hA55);
+
+    // TEST 3: One upward count
+    start_test(3, "Single up-count");
+    Enable = 1; Up_Down = 1;
+    @(posedge Clk);
+    check_count(12'hA56);
+
+    // TEST 4: Four consecutive upward counts
+    start_test(4, "Four consecutive up-counts");
+    repeat (4) @(posedge Clk);
+    check_count(12'hA5A);
+
+    // TEST 5: Enable LOW must hold Count
+    @(negedge Clk); #1;
+    start_test(5, "Enable LOW holds Count");
+    Enable = 0;
+    repeat (2) @(posedge Clk);
+    check_count(12'hA5A);
+
+    // ... tests 6 to 14: direction changes, load while counting,
+    //     load while disabled, underflow, rollover ...
+
+    // TEST 15: Reset overrides Load
+    @(negedge Clk);
+    start_test(15, "Reset priority over Load");
+    A = 12'hABC; #1;
+    Load = 1; #1;
+    Reset = 1;
+    check_count(12'h000);
+
+    // TEST 16: Release Reset while Load remains HIGH
+    start_test(16, "Reset release while Load remains HIGH");
+    Reset = 0;
+    check_count(12'hABC);
+    Load = 0;
+
+    // TEST 17: Simultaneous Reset and Load
+    @(negedge Clk); #1;
+    start_test(17, "Simultaneous Reset and Load");
+    A = 12'hFFF;
+    {Reset, Load} = 2'b11;
+    check_count(12'h000);
+    {Reset, Load} = 2'b00;
+
+    // ... tests 18 and 19: reset while disabled, re-enable counting ...
+
+    $display("\n============================================================");
+    $display("TEST SUMMARY: %0d passed, %0d failed", Passed_Tests, Failed_Tests);
+    if ((Passed_Tests == 19) && (Failed_Tests == 0))
+      $display("ALL 19 TESTS PASSED");
+    else
+      $display("TESTBENCH FAILED - inspect Test_ID and Expected_Count");
+    $display("============================================================\n");
+    #5;
+    $finish;
+  end
+
+endmodule
+</script>
+
+<script>
+/* ===================================================================
+   CONFIG: replace these with your own links.
+   Leave a value as '#' or '' to keep that button inert.
+=================================================================== */
+const CONFIG = {
+  github:   '#',   // e.g. 'https://github.com/your-name/12bit-updown-counter'
+  linkedin: '#',   // e.g. 'https://www.linkedin.com/in/your-name'
+  report:   '#',   // e.g. 'assets/EEE411_Project_Report.pdf'
+  email:    '',    // e.g. 'you@example.com'
+  video:    'https://youtu.be/kSCfAl0tF0s?si=J-tChL56dPQiI5_b'
+};
+
+(function(){
+'use strict';
+const $  = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* ---------- Links from CONFIG ---------- */
+$$('[data-link]').forEach(a=>{
+  const k=a.dataset.link, v=CONFIG[k];
+  if(k==='email'){
+    if(v){a.href='mailto:'+v;} else {a.hidden=true;}
+  } else if(v && v!=='#'){
+    a.href=v;
+  } else {
+    a.addEventListener('click',e=>e.preventDefault());
+    a.setAttribute('aria-disabled','true');
+    a.style.opacity='.55';
+    a.style.cursor='default';
+  }
+});
+
+/* ---------- Theme + mobile menu ---------- */
+$('#theme').addEventListener('click',()=>{
+  const next=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',next);
+  try{localStorage.setItem('theme',next);}catch(e){}
+  const m=document.querySelector('meta[name="theme-color"]');
+  if(m) m.content = next==='dark'?'#0A111D':'#EDF0F4';
+});
+const nav=$('#nav'), menu=$('#menu');
+menu.addEventListener('click',()=>{
+  const open=nav.classList.toggle('open');
+  menu.setAttribute('aria-expanded',String(open));
+});
+$$('#nav a').forEach(a=>a.addEventListener('click',()=>{nav.classList.remove('open');menu.setAttribute('aria-expanded','false');}));
+
+/* Highlight the current section in the nav */
+const links=$$('#nav a');
+const io=new IntersectionObserver(es=>{
+  es.forEach(e=>{
+    if(e.isIntersecting){
+      links.forEach(l=>l.classList.toggle('on',l.getAttribute('href')==='#'+e.target.id));
+    }
+  });
+},{rootMargin:'-45% 0px -50% 0px'});
+$$('main section[id]').forEach(s=>io.observe(s));
+
+/* ---------- Image slots: real image if present, placeholder if not ---------- */
+const lb=$('#lb'), lbImg=$('img',lb);
+function hydrate(fig){
+  if(fig.dataset.ready) return; fig.dataset.ready='1';
+  const src=fig.dataset.img, name=fig.dataset.name||'Image';
+  const frame=document.createElement('div');
+  frame.className='frame';
+  frame.style.setProperty('--ar',fig.dataset.ratio||'16/9');
+  const ph=document.createElement('div');
+  ph.className='ph';
+  ph.innerHTML='<span><b>'+esc(name)+'</b><code>'+esc(src)+'</code></span>';
+  frame.appendChild(ph);
+  fig.insertBefore(frame,fig.firstChild);
+  const probe=new Image();
+  probe.onload=()=>{
+    const img=document.createElement('img');
+    img.src=src; img.alt=name; img.loading='lazy'; img.decoding='async';
+    frame.appendChild(img); ph.remove(); frame.classList.add('loaded');
+    frame.tabIndex=0; frame.setAttribute('role','button'); frame.setAttribute('aria-label','Enlarge: '+name);
+    const open=()=>{lbImg.src=src; lbImg.alt=name; lb.showModal();};
+    frame.addEventListener('click',open);
+    frame.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}});
+  };
+  probe.src=src;
+}
+$('#lb-close').addEventListener('click',()=>lb.close());
+lb.addEventListener('click',e=>{if(e.target===lb) lb.close();});
+
+/* ---------- Tabs (waveforms + code) ---------- */
+$$('[data-tabs]').forEach(list=>{
+  const tabs=$$('[role="tab"]',list);
+  function select(t,focus){
+    tabs.forEach(x=>{
+      const on=x===t;
+      x.setAttribute('aria-selected',String(on));
+      x.tabIndex=on?0:-1;
+      const p=document.getElementById(x.getAttribute('aria-controls'));
+      if(p) p.hidden=!on;
+    });
+    if(focus) t.focus();
+  }
+  tabs.forEach((t,i)=>{
+    t.addEventListener('click',()=>select(t));
+    t.addEventListener('keydown',e=>{
+      let n=null;
+      if(e.key==='ArrowRight') n=tabs[(i+1)%tabs.length];
+      if(e.key==='ArrowLeft')  n=tabs[(i-1+tabs.length)%tabs.length];
+      if(e.key==='Home') n=tabs[0];
+      if(e.key==='End')  n=tabs[tabs.length-1];
+      if(n){e.preventDefault();select(n,true);}
+    });
+  });
+});
+
+/* ---------- Test list ---------- */
+const TESTS=[
+ [1,'Asynchronous Reset assertion','Async','000'],
+ [2,'Narrow asynchronous Load pulse','Async','A55'],
+ [3,'Single up-count','Counting','A56'],
+ [4,'Four consecutive up-counts','Counting','A5A'],
+ [5,'Enable LOW holds Count','Hold','A5A'],
+ [6,'Direction changes while disabled','Hold','A5A'],
+ [7,'Single down-count','Counting','A59'],
+ [8,'Three consecutive down-counts','Counting','A56'],
+ [9,'Load overrides active counting','Priority','123'],
+ [10,'Load while disabled','Async','000'],
+ [11,'Down-count underflow','Boundary','FFF'],
+ [12,'Up-count rollover','Boundary','000'],
+ [13,'Direction change causes no false count','Counting','101'],
+ [14,'New direction used at next clock','Counting','100'],
+ [15,'Reset priority over Load','Priority','000'],
+ [16,'Reset release while Load remains HIGH','Priority','ABC'],
+ [17,'Simultaneous Reset and Load','Priority','000'],
+ [18,'Reset while disabled','Async','000'],
+ [19,'Re-enable resumes counting','Counting','001']
+];
+const CATS=['All','Async','Counting','Hold','Boundary','Priority'];
+const tbody=$('#tests'), filters=$('#filters');
+function renderTests(cat){
+  tbody.innerHTML=TESTS.filter(t=>cat==='All'||t[2]===cat).map(t=>
+    '<tr><td class="m">'+t[0]+'</td><td>'+esc(t[1])+'</td><td><span class="pill '+(t[2]==='Async'||t[2]==='Priority'?'a':'s')+'">'+t[2]+'</span></td><td class="m">0x'+t[3]+'</td></tr>'
+  ).join('');
+}
+filters.innerHTML=CATS.map((c,i)=>'<button class="chip" type="button" aria-pressed="'+(i===0)+'" data-c="'+c+'">'+c+'</button>').join('');
+filters.addEventListener('click',e=>{
+  const b=e.target.closest('.chip'); if(!b) return;
+  $$('.chip',filters).forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  renderTests(b.dataset.c);
+});
+renderTests('All');
+
+/* ---------- Layout stages ---------- */
+const STAGES=[
+ {t:'Floorplan and power rings',p:'The floorplan sets the core area that holds the 64 instances. VDD and VSS rings are then added around the core to carry power in.',
+  s:[['assets/layout-floorplan.png',1.24,'Floorplan in Innovus.'],['assets/layout-rings.png',1.01,'VDD and VSS rings.']]},
+ {t:'Power stripes and the first DRC failure',warn:1,p:'The first DRC run reported 220 violations. The cause: the power stripes had been placed on the same metal layer. Assigning them to the correct layers and re-running DRC removed every violation.',
+  s:[['assets/layout-stripes.png',1.14,'Power stripes, first attempt.'],['assets/drc-before.png',2.5,'DRC report: 220 violations.'],['assets/layout-stripes-fixed.png',0.99,'Corrected power stripes.'],['assets/drc-clean.png',2.5,'DRC re-run with no violations.']]},
+ {t:'Special route',p:'Special routing connects the standard-cell power rails to the rings and stripes.',
+  s:[['assets/layout-special-route.png',1.05,'Special route result.',1]]},
+ {t:'Placement',p:'The standard cells are placed inside the core. The placement view shows the twelve flip-flops and the logic around them.',
+  s:[['assets/layout-placement.png',1.07,'Placement view with placed standard cells.',1]]},
+ {t:'Pre-CTS timing and optimization',p:'Setup and hold were analyzed before clock tree synthesis, then the design was optimized and the report re-checked.',
+  s:[['assets/timing-prects-setup.png',1.7,'Pre-CTS setup timing.'],['assets/timing-prects-hold.png',2.3,'Pre-CTS hold timing.'],['assets/optimization.png',1.46,'Optimization report.',1]]},
+ {t:'Routing and the second DRC pass',warn:1,p:'DRC after routing flagged violations. They were debugged and DRC was run again.',
+  s:[['assets/drc-post-route.png',2.5,'DRC violations after routing.'],['assets/drc-post-route-fixed.png',2,'DRC after debugging.']]},
+ {t:'Clock tree synthesis',p:'The clock tree was built for the 12 flip-flops and global routing finished without error. DRC was verified again afterward.',
+  s:[['assets/cts-report.png',2.5,'CTS and global routing report.'],['assets/drc-post-cts.png',3,'DRC after CTS.'],['assets/clock-tree.png',1.69,'Clock tree for 12 flops.',1]]},
+ {t:'Sign-off checks',p:'Post-route timing shows 7.153 ns of setup slack, and the connectivity report shows no open or short nets. Final power and area reports close the flow.',
+  s:[['assets/timing-post-route.png',1.5,'Post-route timing summary.',1],['assets/connectivity.png',2.4,'Connectivity: no open or short nets.'],['assets/area-final.png',9,'Area report: 64 instances, 222.984.']]}
+];
+const stages=$('#stages');
+stages.innerHTML=STAGES.map(st=>
+  '<article class="stage'+(st.warn?' warn':'')+'"><div class="txt sticky"><h3>'+esc(st.t)+'</h3><p>'+esc(st.p)+'</p></div><div class="shots">'+
+  st.s.map(x=>'<figure class="shot'+(x[3]?' wide':'')+'" data-img="'+x[0]+'" data-ratio="'+x[1]+'" data-name="'+esc(x[2].replace(/\.$/,''))+'"><figcaption>'+esc(x[2])+'</figcaption></figure>').join('')+
+  '</div></article>'
+).join('');
+
+/* Hydrate every image slot now that all figures exist */
+$$('.shot').forEach(hydrate);
+
+/* ---------- Code blocks ---------- */
+function highlight(src){
+  const re=/(\/\/[^\n]*)|("(?:[^"\\]|\\.)*")|(`\w+)|(\b\d*'[bhdBHD][0-9a-fA-FxXzZ_]+)|(\b(?:module|endmodule|input|output|wire|reg|assign|always|posedge|negedge|if|else|begin|end|generate|endgenerate|genvar|for|task|endtask|initial|integer|repeat)\b)|(\$\w+)|(\b\d+\b)/g;
+  let out='',last=0,m;
+  while((m=re.exec(src))){
+    out+=esc(src.slice(last,m.index));
+    const c=m[1]?'c':m[2]?'s':m[3]?'d':m[4]?'n':m[5]?'k':m[6]?'f':'n';
+    out+='<span class="t-'+c+'">'+esc(m[0])+'</span>';
+    last=re.lastIndex;
+  }
+  return out+esc(src.slice(last));
+}
+$('#code-rtl').innerHTML=highlight($('#src-rtl').textContent);
+$('#code-tb').innerHTML=highlight($('#src-tb').textContent);
+$$('.copy').forEach(b=>b.addEventListener('click',async()=>{
+  const text=document.getElementById(b.dataset.copy).textContent;
+  try{await navigator.clipboard.writeText(text);}
+  catch(e){
+    const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');}catch(_){} ta.remove();
+  }
+  b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1600);
+}));
+
+/* ===================================================================
+   Counter simulator: a behavioral model of the Verilog above.
+   Priority: Reset > Load > Enable. Reset and Load act immediately,
+   Enable and Up_Down are only sampled at the clock edge.
+=================================================================== */
+const st={count:0,A:0xA55,reset:false,load:false,en:false,up:true};
+const el={
+  reset:$('#in-reset'),load:$('#in-load'),en:$('#in-en'),up:$('#in-up'),down:$('#in-down'),
+  a:$('#in-a'),tick:$('#btn-tick'),auto:$('#btn-auto'),status:$('#status'),dec:$('#dec'),
+  d:[$('#d0'),$('#d1'),$('#d2')]
+};
+const bitsEl=$('#bits');
+let bitEls=[];
+for(let i=11;i>=0;i--){
+  const b=document.createElement('div');
+  b.className='bit';
+  b.innerHTML='<span class="ix">'+i+'</span><span class="v">0</span><span class="tg">D</span>';
+  bitsEl.appendChild(b); bitEls[i]=b;
+}
+let prevHex='   ', touched=false, demoTimers=[];
+
+function settle(){                 /* asynchronous behavior */
+  if(st.reset) st.count=0;
+  else if(st.load) st.count=st.A;
+}
+function hex3(n){return n.toString(16).toUpperCase().padStart(3,'0');}
+function render(){
+  const h=hex3(st.count);
+  for(let k=0;k<3;k++){
+    const ch=h[2-k], node=el.d[k];
+    if(node.textContent!==ch){
+      node.textContent=ch;
+      if(!reduce){node.classList.remove('bump');void node.offsetWidth;node.classList.add('bump');}
+    }
+  }
+  el.dec.textContent=st.count;
+  for(let i=0;i<12;i++){
+    const val=(st.count>>i)&1, a=(st.A>>i)&1;
+    const clr=st.reset || (st.load && !a);
+    const set=!st.reset && st.load && a;
+    const b=bitEls[i];
+    b.classList.toggle('one',!!val);
+    b.classList.toggle('forced',clr||set);
+    b.children[1].textContent=val;
+    b.children[2].textContent=clr?'CLR':set?'SET':'D';
+  }
+  let msg,asyncOn=false;
+  if(st.reset){asyncOn=true;msg='Reset is high: asynchronous clear, Count = 0x000.'+(st.load?' Reset wins over Load.':'');}
+  else if(st.load){asyncOn=true;msg='Load is high: asynchronous load, Count = 0x'+hex3(st.A)+'.';}
+  else if(!st.en){msg='Enable is low: Count holds at every clock edge.';}
+  else {msg='Counting '+(st.up?'up':'down')+' by 1 at each rising clock edge.';}
+  el.status.textContent=msg;
+  el.status.classList.toggle('async',asyncOn);
+}
+function tick(){
+  if(!(st.reset||st.load) && st.en){
+    st.count=(st.count+(st.up?1:-1)+4096)&0xFFF;
+  }
+  render();
+}
+function stopDemo(){ if(!touched){touched=true;demoTimers.forEach(clearTimeout);} }
+function readInputs(){
+  st.reset=el.reset.checked; st.load=el.load.checked; st.en=el.en.checked; st.up=el.up.checked;
+  settle(); render();
+}
+[el.reset,el.load,el.en,el.up,el.down].forEach(i=>i.addEventListener('change',()=>{stopDemo();readInputs();}));
+el.a.addEventListener('input',()=>{
+  stopDemo();
+  el.a.value=el.a.value.replace(/[^0-9a-fA-F]/g,'').toUpperCase().slice(0,3);
+  st.A=el.a.value?parseInt(el.a.value,16):0;
+  settle(); render();
+});
+$$('.presets button').forEach(b=>b.addEventListener('click',()=>{
+  stopDemo(); el.a.value=b.dataset.a; st.A=parseInt(b.dataset.a,16); settle(); render();
+}));
+el.tick.addEventListener('click',()=>{stopDemo();tick();});
+let autoId=null;
+el.auto.addEventListener('click',()=>{
+  stopDemo();
+  const on=el.auto.getAttribute('aria-pressed')!=='true';
+  el.auto.setAttribute('aria-pressed',String(on));
+  el.auto.textContent=on?'Stop clock':'Auto clock';
+  if(on){autoId=setInterval(tick,reduce?900:450);} else {clearInterval(autoId);autoId=null;}
+});
+
+/* One short load-time sequence that replays tests 1 to 4 of the testbench */
+render();
+if(!reduce){
+  const step=(ms,fn)=>demoTimers.push(setTimeout(()=>{if(!touched)fn();},ms));
+  step(900,()=>{el.reset.checked=true;readInputs();});
+  step(1500,()=>{el.reset.checked=false;readInputs();});
+  step(2200,()=>{el.load.checked=true;readInputs();});
+  step(2900,()=>{el.load.checked=false;readInputs();});
+  step(3500,()=>{el.en.checked=true;readInputs();});
+  for(let k=0;k<4;k++) step(4100+k*450,tick);
+  step(6200,()=>{el.en.checked=false;readInputs();});
+}
+})();
+</script>
+</body>
+</html>
